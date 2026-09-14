@@ -1,0 +1,39 @@
+# SonarQube / SonarScanner
+.sonarqube/
+.scannerwork/
+TestResults/
+coverage.xml
+*.coverage
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.log
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Rider / Visual Studio
+.idea/
+*.sln.iml
+.vs/
+
+# Dependencias
+packages/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# PowerShell
+*.ps1.xml
