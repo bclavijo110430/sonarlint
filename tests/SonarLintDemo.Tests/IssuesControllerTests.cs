@@ -51,6 +51,7 @@ public class IssuesControllerTests : IClassFixture<WebApplicationFactory<Program
 
     {
         var testissue = new TestIssue { Id = 1, Name = "Test Issue" };
+        var testissue2 = new TestIssue { Id = 2, Name = "Test Issue 2" };
         var token= "sqa_2d5f76a50944b396d8f8f34067e33572d87ab565"; // Replace with your actual token
         var response = await _client.GetAsync("/issues/duplicate-b");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
