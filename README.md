@@ -122,15 +122,39 @@ Una vez conectado, SonarLint resaltara los issues directamente en el editor.
 
 ## Problemas intencionales incluidos
 
-El controlador `IssuesController` contiene varios issues tipicos que SonarQube/SonarLint detectaran:
+El proyecto incluye controladores y servicios con issues tipicos y vulnerabilidades de seguridad que SonarQube/SonarLint detectaran:
 
-| Endpoint | Issue esperado | Regla aproximada |
+### Code smells y bugs
+
+| Ubicacion | Issue esperado | Regla aproximada |
 |---|---|---|
 | `GET /issues/unused` | Variable asignada pero no usada | S1481 |
 | `GET /issues/empty-catch` | Bloque `catch` vacio | S108 |
 | `GET /issues/null-reference` | Desreferencia posiblemente nula | S2259 |
 | `GET /issues/duplicate-a` / `duplicate-b` | Codigo duplicado | S1192 / S4144 |
 | `GET /issues/search` | Posible inyeccion SQL | S3649 |
+| `GET /newcode/baseline` | Comentario TODO sin resolver | S1135 |
+| `POST /newcode/calculate` | Numero magico | S109 |
+| `GET /newcode/grade` | Complejidad cognitiva | S3776 |
+| `LegacyService.ProcessOrder` | Demasiados parametros | S107 |
+| `UserInput.RawValue` | Campo publico | S1104 |
+
+### Vulnerabilidades de seguridad
+
+| Ubicacion | Issue esperado | Regla aproximada |
+|---|---|---|
+| `GET /security/login` | Contrasena hardcoded | S2068 |
+| `GET /security/read-file` | Path traversal | S2083 |
+| `GET /security/run` | Command injection | S2076 |
+| `GET /security/search-xml` | XPath injection | S2091 |
+| `GET /security/echo` | XSS (Cross-Site Scripting) | S5131 |
+| `GET /security/redirect` | Open redirect | S5144 |
+| `GET /security/fetch` | SSRF | S5334 |
+| `GET /security/hash` | Criptografia debil (MD5) | S4426 |
+| `GET /security/cookie` | Cookie insegura | S2092 / S4787 |
+| `SecurityService.ApiKey` | API key hardcoded | S2068 |
+| `SecurityService.FindUsers` | SQL injection | S2077 |
+| `SecurityService.HashToken` | Hash debil (SHA1) | S4790 |
 
 ---
 
@@ -143,6 +167,38 @@ El controlador `IssuesController` contiene varios issues tipicos que SonarQube/S
 | `scripts/Stop-SonarQube.ps1` | Detiene los contenedores. Acepta `-ComposeProvider` |
 | `scripts/Initialize-Project.ps1` | Prepara tools .NET y proyecto en SonarQube |
 | `scripts/Start-Analysis.ps1` | Ejecuta SonarScanner con cobertura de tests |
+| `scripts/Add-NewCodeSample.ps1` | Agrega codigo nuevo para probar "New Code" |
+
+---
+
+## Probar la funcionalidad "New Code"
+
+SonarQube Community Build y SonarLint permiten enfocarse en **codigo nuevo**: issues introducidos despues de una linea base.
+
+### Flujo recomendado
+
+1. **Analisis inicial (baseline)**:
+   ```powershell
+   .\scripts\Start-Analysis.ps1 -SonarToken <tu-token>
+   ```
+
+2. **Agregar codigo nuevo**:
+   ```powershell
+   .\scripts\Add-NewCodeSample.ps1
+   ```
+   Este script agrega metodos adicionales a `NewCodeController.cs` con nuevos issues.
+
+3. **Segundo analisis**:
+   ```powershell
+   .\scripts\Start-Analysis.ps1 -SonarToken <tu-token>
+   ```
+
+4. **Revisar resultados**:
+   - Abre el proyecto en SonarQube.
+   - Ve a la pestana **"New Code"** o **"Overall Code"**.
+   - Los issues agregados en el paso 2 apareceran como codigo nuevo.
+
+> **Nota**: En SonarQube Community Build, la definicion de "New Code" por defecto es "Previous version" o "Previous analysis". Si no ves los cambios como "new code", verifica la configuracion en **Project Settings > New Code**.
 
 ---
 
@@ -174,11 +230,88 @@ Asegurate de ejecutar `infra/init-sonarqube.ps1`. Si persiste, configura la maqu
 
 El archivo `nuget.config` limita los origenes a `nuget.org`. Si tu entorno tiene feeds privados configurados globalmente, este archivo los ignora para este proyecto.
 
-### SonarLint no se conecta
+### SonarLint no detecta findings
 
-- Verifica que SonarQube este corriendo en `http://localhost:9000`.
-- Asegurate de usar un **User Token**, no un Project Token ni Global Token.
-- Revisa que el `connectionId` en tus User Settings de VS Code coincida con el de `.vscode/settings.json` (`local-sonarqube`).
+Si la vista **SonarQube Findings** muestra "No SonarQube issues to display", revisa lo siguiente:
+
+#### 1. Extensiones requeridas
+
+Para analizar C# en VS Code, SonarQube for IDE requiere la extension **C# Dev Kit** (o la extension C# basica). Asegurate de tenerlas instaladas:
+
+- `ms-dotnettools.csdevkit`
+- `ms-dotnettools.vscode-dotnet-runtime`
+- `SonarSource.sonarlint-vscode`
+
+#### 2. Solucion cargada
+
+Abre la paleta de comandos (`Ctrl+Shift+P`) y ejecuta:
+
+```
+.NET: Open Solution
+```
+
+Selecciona `SonarLintDemo.sln`. El proyecto debe compilar sin errores antes de que SonarLint pueda analizarlo.
+
+#### 3. Connected Mode configurado
+
+El binding del proyecto esta en `.vscode/settings.json`, pero la **conexion al servidor** debe estar en tus **User Settings** de VS Code. Presiona `Ctrl+Shift+P` y ejecuta:
+
+```
+Preferences: Open User Settings (JSON)
+```
+
+Agrega lo siguiente (reemplaza `<tu-token>`):
+
+```json
+{
+  "sonarlint.connectedMode.connections.sonarqube": [
+    {
+      "connectionId": "local-sonarqube",
+      "serverUrl": "http://localhost:9000",
+      "token": "<tu-token>"
+    }
+  ]
+}
+```
+
+> **Importante**: El `connectionId` debe coincidir exactamente con el de `.vscode/settings.json` (`local-sonarqube`).
+
+#### 4. Verificar conexion
+
+1. Abre la vista **SONARQUBE SETUP > CONNECTED MODE** en la barra lateral.
+2. Deberias ver la conexion `local-sonarqube`.
+3. Si te pide "Bind project", acepta y selecciona `SonarLintDemo`.
+
+#### 5. Ver logs detallados
+
+Habilita logs verbose para diagnosticar:
+
+1. `Ctrl+Shift+P` > `Preferences: Open User Settings (JSON)`.
+2. Agrega:
+   ```json
+   "sonarlint.output.showVerboseLogs": true,
+   "sonarlint.output.showAnalyzerLogs": true
+   ```
+3. Reinicia VS Code.
+4. Abre **View > Output > SonarQube for IDE**.
+5. Abre un archivo `.cs` y revisa si hay errores de analisis.
+
+#### 6. Reiniciar extensiones
+
+Si despues de configurar todo sigue sin funcionar:
+
+1. Cierra todos los archivos `.cs`.
+2. Abre la paleta de comandos y ejecuta:
+   ```
+   Developer: Reload Window
+   ```
+3. Abre un archivo como `IssuesController.cs` y espera 30-60 segundos a que SonarLint descargue el analizador de C#.
+
+#### 7. Limitaciones de C# en SonarLint
+
+- Algunas reglas de seguridad avanzadas (inyeccion SQL, XSS, etc.) requieren **Connected Mode** y que el proyecto haya sido analizado primero por SonarQube Server.
+- SonarLint para VS Code analiza archivos abiertos. Si no tienes ningun archivo `.cs` abierto, no veras findings.
+- El analizador de C# se descarga en segundo plano la primera vez. Requiere conexion a Internet.
 
 ---
 

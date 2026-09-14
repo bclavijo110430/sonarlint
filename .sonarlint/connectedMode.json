@@ -1,4 +1,5 @@
 {
   "sonarQubeUri": "http://localhost:9000",
-  "projectKey": "SonarLintDemo"
+  "projectKey": "SonarLintDemo",
+  "token": "sqa_2d5f76a50944b396d8f8f34067e33572d87ab565"
 }

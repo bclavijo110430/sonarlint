@@ -5,6 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpClient();
 
 // Registrar conexion SQLite (solo para propositos demostrativos)
 builder.Services.AddSingleton(_ =>

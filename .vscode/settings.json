@@ -1,4 +1,5 @@
 {
+  "dotnet.defaultSolution": "SonarLintDemo.sln",
   "sonarlint.connectedMode.project": {
     "connectionId": "local-sonarqube",
     "projectKey": "SonarLintDemo"
